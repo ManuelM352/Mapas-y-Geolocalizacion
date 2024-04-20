@@ -15,15 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
-import com.example.platform.location.locationupdates.LocationUpdatesScreen
-import com.example.platform.location.permission.LocationPermissionScreen
 import com.google.android.gms.maps.OnStreetViewPanoramaReadyCallback
 import com.google.android.gms.maps.StreetViewPanorama
 import com.google.android.gms.maps.StreetViewPanoramaOptions
 import com.google.android.gms.maps.StreetViewPanoramaView
 import com.google.android.gms.maps.model.LatLng
-import net.ivanvega.milocationymapascompose.ui.location.CurrentLocationScreen
-import net.ivanvega.milocationymapascompose.ui.maps.MapWithCameraAndDrawing
+import com.google.maps.android.compose.MiMapa
 import net.ivanvega.milocationymapascompose.ui.theme.MiLocationYMapasComposeTheme
 
 class MainActivity : ComponentActivity(), OnStreetViewPanoramaReadyCallback {
@@ -41,12 +38,16 @@ class MainActivity : ComponentActivity(), OnStreetViewPanoramaReadyCallback {
                     //LocationPermissionScreen()
                     //CurrentLocationScreen()
                     //LocationUpdatesScreen()
-                    MapWithCameraAndDrawing()
+                    //MapWithCameraAndDrawing()
                     //StreetViewPanoramaFragmentContainer()
+                    // Crear un objeto RouteResponse con la información de la ruta
+                    MiMapa(this)
                 }
             }
         }
     }
+
+
     override fun onStreetViewPanoramaReady(panorama: StreetViewPanorama) {
         // Configurar la vista de Street View según sea necesario
         val initialPosition = LatLng(40.748817, -73.985428) // Ubicación inicial
