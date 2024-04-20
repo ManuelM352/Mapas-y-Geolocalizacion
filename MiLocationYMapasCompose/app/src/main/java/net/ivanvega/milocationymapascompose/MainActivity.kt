@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity(), OnStreetViewPanoramaReadyCallback {
                     //StreetViewPanoramaFragmentContainer()
                     // Crear un objeto RouteResponse con la información de la ruta
                     MiMapa(this)
+
                 }
             }
         }

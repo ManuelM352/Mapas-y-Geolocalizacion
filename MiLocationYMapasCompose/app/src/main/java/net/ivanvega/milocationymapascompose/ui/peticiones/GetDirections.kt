@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -68,7 +67,7 @@ val routeService = retrofit.create(RouteService::class.java)
 
 // Define permisos de ubicación
 private val permissions = arrayOf(
-        Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.ACCESS_FINE_LOCATION,
     Manifest.permission.ACCESS_COARSE_LOCATION
 )
 
@@ -100,16 +99,11 @@ fun MiMapa(activity: ComponentActivity) {
         Button(
             onClick = {
                 scope.launch {
-                    // Verificar si la caja de texto de destino está vacía
-                    if (destino.isNotBlank()) {
-                        // Solicitar ubicación actual antes de obtener la ruta
-                        obtenerUbicacionActual(activity)?.let { location ->
-                            val currentLatLng = LatLng(location.latitude, location.longitude)
-                            origen = "${currentLatLng.longitude},${currentLatLng.latitude}"
-                            ruta = obtenerRuta(origen, destino)
-                        }
-                    } else {
-                        Toast.makeText(activity, "Por favor ingresa un destino", Toast.LENGTH_SHORT).show()
+                    // Solicitar ubicación actual antes de obtener la ruta
+                    obtenerUbicacionActual(activity)?.let { location ->
+                        val currentLatLng = LatLng(location.latitude, location.longitude)
+                        origen = "${currentLatLng.longitude},${currentLatLng.latitude}"
+                        ruta = obtenerRuta(origen, destino)
                     }
                 }
             }
