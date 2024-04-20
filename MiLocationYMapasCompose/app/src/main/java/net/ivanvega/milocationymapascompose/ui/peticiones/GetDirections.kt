@@ -103,8 +103,17 @@ fun MiMapa(activity: ComponentActivity) {
                     obtenerUbicacionActual(activity)?.let { location ->
                         val currentLatLng = LatLng(location.latitude, location.longitude)
                         origen = "${currentLatLng.longitude},${currentLatLng.latitude}"
-                        ruta = obtenerRuta(origen, destino)
                     }
+                }
+            }
+        ) {
+            Text("Iniciar Viaje en Ubicación Actual")
+        }
+        Button(
+            onClick = {
+                scope.launch {
+                    // Obtener la ruta cuando se presione este botón
+                    ruta = obtenerRuta(origen, destino)
                 }
             }
         ) {
@@ -119,11 +128,16 @@ fun MiMapa(activity: ComponentActivity) {
             // Crear una lista de LatLng directamente desde las coordenadas de la ruta
             val coordenadasRuta =
                 route.features.first().geometry.coordinates.map { LatLng(it[1], it[0]) }
+        }
 
-            GoogleMap(
-                cameraPositionState = cameraPositionState,
-            ) {
-                // Dibujar la polilínea en el mapa
+        // Renderizar el mapa
+        GoogleMap(
+            cameraPositionState = cameraPositionState,
+        ) {
+            // Dibujar la polilínea en el mapa solo si se ha obtenido una ruta
+            ruta?.let { route ->
+                val coordenadasRuta =
+                    route.features.first().geometry.coordinates.map { LatLng(it[1], it[0]) }
                 Polyline(points = coordenadasRuta, color = Color.Red)
             }
         }
