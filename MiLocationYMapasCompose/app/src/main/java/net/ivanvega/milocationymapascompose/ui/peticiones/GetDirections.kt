@@ -2,16 +2,26 @@ package com.google.maps.android.compose
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.*
@@ -79,6 +89,10 @@ fun MiMapa(activity: ComponentActivity) {
     var origen by remember { mutableStateOf("") }
     var destino by remember { mutableStateOf("") }
     var ruta: RouteResponse? by remember { mutableStateOf(null) }
+    var manualDestinationMode by remember { mutableStateOf(false) }
+    var manualDestinationCoordinate by remember { mutableStateOf(LatLng(0.0, 0.0)) }
+    var markerOrigen: LatLng? by remember { mutableStateOf(null) }
+    var markerDestino: LatLng? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
     val singapore = LatLng(20.126275317533462, -101.18905377998448)
     val cameraPositionState = rememberCameraPositionState {
@@ -89,60 +103,103 @@ fun MiMapa(activity: ComponentActivity) {
         TextField(
             value = origen,
             onValueChange = { origen = it },
-            label = { Text(text = "Coordenadas de origen (latitud, longitud)") }
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(text = "Origen: longitud, latitud") }
         )
         TextField(
             value = destino,
             onValueChange = { destino = it },
-            label = { Text("Coordenadas de destino (latitud, longitud)") }
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Destino: longitud, latitud") }
         )
-        Button(
-            onClick = {
-                scope.launch {
-                    // Solicitar ubicación actual antes de obtener la ruta
-                    obtenerUbicacionActual(activity)?.let { location ->
-                        val currentLatLng = LatLng(location.latitude, location.longitude)
-                        origen = "${currentLatLng.longitude},${currentLatLng.latitude}"
+
+        Row {
+            Button(
+                onClick = {
+                    scope.launch {
+                        obtenerUbicacionActual(activity)?.let { location ->
+                            val currentLatLng = LatLng(location.latitude, location.longitude)
+                            origen = "${currentLatLng.longitude},${currentLatLng.latitude}"
+                            markerOrigen = currentLatLng
+                        }
                     }
                 }
+            ) {
+                Icon(Icons.Default.LocationOn, contentDescription = "Ubicación Actual")
+                Text("Ubicación Actual")
             }
-        ) {
-            Text("Iniciar Viaje en Ubicación Actual")
+
+            Button(
+                onClick = { manualDestinationMode = true }
+            ) {
+                Icon(Icons.Default.Star, contentDescription = "Seleccionar Destino")
+                Text("Seleccionar Destino")
+            }
+
+
         }
-        Button(
-            onClick = {
-                scope.launch {
-                    // Obtener la ruta cuando se presione este botón
-                    ruta = obtenerRuta(origen, destino)
+        Row{
+            Button(
+                onClick = {
+                    scope.launch {
+                        if (origen.isNotEmpty() && destino.isNotEmpty()) {
+                            ruta = obtenerRuta(origen, destino)
+                        } else {
+                            showToast(activity, "Por favor, complete los campos de origen y destino")
+                        }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Search, contentDescription = "Trazar Ruta")
+                Text("Trazar Ruta")
+            }
+
+        }
+
+//        ruta?.let { route ->
+//            Text("Distancia: ${route.features.first().properties.summary.distance} m")
+//            Text("Duración: ${route.features.first().properties.summary.duration} s")
+//            val coordenadasRuta =
+//                route.features.first().geometry.coordinates.map { LatLng(it[1], it[0]) }
+//        }
+
+        GoogleMap(
+            cameraPositionState = cameraPositionState,
+            onMapClick = { latLng ->
+                if (manualDestinationMode) {
+                    manualDestinationCoordinate = latLng
+                    destino = "${latLng.longitude},${latLng.latitude}"
+                    markerDestino = latLng
+                    manualDestinationMode = false
                 }
             }
         ) {
-            Text("Obtener Ruta")
-        }
+            markerOrigen?.let {
+                Marker(state = MarkerState(position = it), title = "Origen")
+            }
 
-        // Mostrar la ruta obtenida
-        ruta?.let { route ->
-            Text("Distancia: ${route.features.first().properties.summary.distance} m")
-            Text("Duración: ${route.features.first().properties.summary.duration} s")
+            markerDestino?.let {
+                Marker(state = MarkerState(position = it), title = "Destino Manual")
+            }
 
-            // Crear una lista de LatLng directamente desde las coordenadas de la ruta
-            val coordenadasRuta =
-                route.features.first().geometry.coordinates.map { LatLng(it[1], it[0]) }
-        }
-
-        // Renderizar el mapa
-        GoogleMap(
-            cameraPositionState = cameraPositionState,
-        ) {
-            // Dibujar la polilínea en el mapa solo si se ha obtenido una ruta
             ruta?.let { route ->
                 val coordenadasRuta =
                     route.features.first().geometry.coordinates.map { LatLng(it[1], it[0]) }
                 Polyline(points = coordenadasRuta, color = Color.Red)
             }
+
+            if (manualDestinationMode) {
+                Marker(
+                    state = MarkerState(position = manualDestinationCoordinate),
+                    title = "Destino Manual"
+                )
+            }
         }
     }
 }
+
+
 
 // Función para obtener la ubicación actual
 @SuppressLint("MissingPermission")
@@ -179,4 +236,8 @@ suspend fun obtenerRuta(origen: String, destino: String): RouteResponse {
             end = destino
         )
     }
+}
+
+fun showToast(context: Context, message: String) {
+    Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
 }
