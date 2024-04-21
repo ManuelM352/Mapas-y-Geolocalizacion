@@ -75,13 +75,24 @@ val retrofit = Retrofit.Builder()
 val routeService = retrofit.create(RouteService::class.java)
 
 
-// Define permisos de ubicación
+// Permisos de ubicación
 private val permissions = arrayOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
     Manifest.permission.ACCESS_COARSE_LOCATION
 )
 
-// Código de solicitud para permisos
+// Permisos de ubicación
+private fun hasLocationPermissions(activity: ComponentActivity): Boolean {
+    return permissions.all {
+        ActivityCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
+    }
+}
+
+// Solicitar permisos de ubicación
+private fun requestLocationPermissions(activity: ComponentActivity) {
+    ActivityCompat.requestPermissions(activity, permissions, LOCATION_PERMISSION_REQUEST_CODE)
+}
+
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1
 
 @Composable
@@ -201,7 +212,7 @@ fun MiMapa(activity: ComponentActivity) {
 
 
 
-// Función para obtener la ubicación actual
+// Obtener la ubicación actual
 @SuppressLint("MissingPermission")
 suspend fun obtenerUbicacionActual(activity: ComponentActivity): Location? {
     return withContext(Dispatchers.Main) {
@@ -213,18 +224,6 @@ suspend fun obtenerUbicacionActual(activity: ComponentActivity): Location? {
             null
         }
     }
-}
-
-// Verifica si se tienen permisos de ubicación
-private fun hasLocationPermissions(activity: ComponentActivity): Boolean {
-    return permissions.all {
-        ActivityCompat.checkSelfPermission(activity, it) == PackageManager.PERMISSION_GRANTED
-    }
-}
-
-// Solicita permisos de ubicación si no se tienen
-private fun requestLocationPermissions(activity: ComponentActivity) {
-    ActivityCompat.requestPermissions(activity, permissions, LOCATION_PERMISSION_REQUEST_CODE)
 }
 
 // Función para obtener la ruta utilizando Retrofit
