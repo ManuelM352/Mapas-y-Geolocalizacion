@@ -130,16 +130,6 @@ fun MiMapa(activity: ComponentActivity) {
         }
     }
     Column {
-        casaCoordinate?.let {
-            Text("Origen (Casa): $it")
-        }
-        TextField(
-            value = destino,
-            onValueChange = { destino = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Destino: longitud, latitud") }
-        )
-
         Row {
             Button(
                 onClick = {
