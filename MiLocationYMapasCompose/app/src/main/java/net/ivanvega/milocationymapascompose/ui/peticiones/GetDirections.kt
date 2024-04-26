@@ -1,5 +1,3 @@
-package com.google.maps.android.compose
-
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -24,9 +22,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
-import com.google.android.gms.location.*
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.Polyline
+import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -74,7 +78,6 @@ val retrofit = Retrofit.Builder()
 
 val routeService = retrofit.create(RouteService::class.java)
 
-
 // Permisos de ubicación
 private val permissions = arrayOf(
     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -94,6 +97,7 @@ private fun requestLocationPermissions(activity: ComponentActivity) {
 }
 
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1
+private const val PREF_KEY_ORIGIN = "origin_coordinates"
 
 @Composable
 fun MiMapa(activity: ComponentActivity) {
@@ -102,7 +106,6 @@ fun MiMapa(activity: ComponentActivity) {
     var ruta: RouteResponse? by remember { mutableStateOf(null) }
     var manualDestinationMode by remember { mutableStateOf(false) }
     var manualDestinationCoordinate by remember { mutableStateOf(LatLng(0.0, 0.0)) }
-    var markerOrigen: LatLng? by remember { mutableStateOf(null) }
     var markerDestino: LatLng? by remember { mutableStateOf(null) }
     val scope = rememberCoroutineScope()
     val singapore = LatLng(20.126275317533462, -101.18905377998448)
@@ -110,13 +113,26 @@ fun MiMapa(activity: ComponentActivity) {
         position = CameraPosition.fromLatLngZoom(singapore, 10f)
     }
 
+    // Obtener la coordenada de origen de SharedPreferences la primera vez que se abre la aplicación
+    val sharedPreferences = activity.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+    val casaCoordinate = sharedPreferences.getString(PREF_KEY_ORIGIN, null)
+    LaunchedEffect(Unit) {
+        val sharedPreferences = activity.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+        val casaCoordinate = sharedPreferences.getString(PREF_KEY_ORIGIN, null)
+        if (casaCoordinate == null) {
+            // Guardar la ubicación actual como la coordenada de origen "Casa"
+            obtenerUbicacionActual(activity)?.let { location ->
+                val currentLatLng = LatLng(location.latitude, location.longitude)
+                val casaCoords = "${currentLatLng.longitude},${currentLatLng.latitude}"
+                sharedPreferences.edit().putString(PREF_KEY_ORIGIN, casaCoords).apply()
+                showToast(activity, "Coordenadas de Casa establecidas con éxito: $casaCoords")
+            }
+        }
+    }
     Column {
-        TextField(
-            value = origen,
-            onValueChange = { origen = it },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text(text = "Origen: longitud, latitud") }
-        )
+        casaCoordinate?.let {
+            Text("Origen (Casa): $it")
+        }
         TextField(
             value = destino,
             onValueChange = { destino = it },
@@ -130,14 +146,14 @@ fun MiMapa(activity: ComponentActivity) {
                     scope.launch {
                         obtenerUbicacionActual(activity)?.let { location ->
                             val currentLatLng = LatLng(location.latitude, location.longitude)
-                            origen = "${currentLatLng.longitude},${currentLatLng.latitude}"
-                            markerOrigen = currentLatLng
+                            destino = "${currentLatLng.longitude},${currentLatLng.latitude}"
+                            markerDestino = currentLatLng
                         }
                     }
                 }
             ) {
                 Icon(Icons.Default.LocationOn, contentDescription = "Ubicación Actual")
-                Text("Ubicación Actual")
+                Text("Ubicación Actual (Destino)")
             }
 
             Button(
@@ -146,17 +162,21 @@ fun MiMapa(activity: ComponentActivity) {
                 Icon(Icons.Default.Star, contentDescription = "Seleccionar Destino")
                 Text("Seleccionar Destino")
             }
-
-
         }
-        Row{
+        Row {
             Button(
                 onClick = {
                     scope.launch {
-                        if (origen.isNotEmpty() && destino.isNotEmpty()) {
-                            ruta = obtenerRuta(origen, destino)
+                        val sharedPreferences =
+                            activity.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE)
+                        val casaCoordinate = sharedPreferences.getString(PREF_KEY_ORIGIN, null)
+                        if (casaCoordinate != null && destino.isNotEmpty()) {
+                            ruta = obtenerRuta(casaCoordinate, destino)
                         } else {
-                            showToast(activity, "Por favor, complete los campos de origen y destino")
+                            showToast(
+                                activity,
+                                "Por favor, complete los campos de origen y destino"
+                            )
                         }
                     }
                 },
@@ -165,16 +185,7 @@ fun MiMapa(activity: ComponentActivity) {
                 Icon(Icons.Default.Search, contentDescription = "Trazar Ruta")
                 Text("Trazar Ruta")
             }
-
         }
-
-//        ruta?.let { route ->
-//            Text("Distancia: ${route.features.first().properties.summary.distance} m")
-//            Text("Duración: ${route.features.first().properties.summary.duration} s")
-//            val coordenadasRuta =
-//                route.features.first().geometry.coordinates.map { LatLng(it[1], it[0]) }
-//        }
-
         GoogleMap(
             cameraPositionState = cameraPositionState,
             onMapClick = { latLng ->
@@ -186,8 +197,9 @@ fun MiMapa(activity: ComponentActivity) {
                 }
             }
         ) {
-            markerOrigen?.let {
-                Marker(state = MarkerState(position = it), title = "Origen")
+            casaCoordinate?.let {
+                val casaLatLng = LatLng(it.split(",")[1].toDouble(), it.split(",")[0].toDouble())
+                Marker(state = MarkerState(position = casaLatLng), title = "Origen (Casa)")
             }
 
             markerDestino?.let {
@@ -209,8 +221,6 @@ fun MiMapa(activity: ComponentActivity) {
         }
     }
 }
-
-
 
 // Obtener la ubicación actual
 @SuppressLint("MissingPermission")

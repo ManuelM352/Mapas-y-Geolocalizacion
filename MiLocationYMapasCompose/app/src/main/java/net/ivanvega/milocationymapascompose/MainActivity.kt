@@ -1,5 +1,6 @@
 package net.ivanvega.milocationymapascompose
 
+import MiMapa
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -20,7 +21,6 @@ import com.google.android.gms.maps.StreetViewPanorama
 import com.google.android.gms.maps.StreetViewPanoramaOptions
 import com.google.android.gms.maps.StreetViewPanoramaView
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.MiMapa
 import net.ivanvega.milocationymapascompose.ui.theme.MiLocationYMapasComposeTheme
 
 class MainActivity : ComponentActivity(), OnStreetViewPanoramaReadyCallback {
